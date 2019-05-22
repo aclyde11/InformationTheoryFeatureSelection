@@ -77,8 +77,9 @@ int main(int argc, char **argv) {
 
 
 
-    auto feature_mask = mi::JMIM(features, y, std::stoi(argv[3]));
-
+    auto p = mi::JMIM(features, y, std::stoi(argv[3]));
+    std::vector<bool> feature_mask = p.first;
+    std::vector<int> ordering = p.second;
 
 //#pragma omp parallel for simd reduction(max: x)
 //    for (int i = 0; i < n; i++) {
@@ -89,15 +90,9 @@ int main(int argc, char **argv) {
 //        }
 //    }
 
-    std::vector<int> set_indicies;
-    for (int i = 0; i < feature_mask.size(); i++) {
-        if (feature_mask[i]) {
-            set_indicies.push_back(i);
-            std::cout << i << std::endl;
-        }
+    for (int i = 0; i < ordering.size(); i++) {
+        std::cout << i << ": " << ordering[i] << std::endl;
     }
-
-    std::cout << set_indicies.size() << std::endl;
 
 
     return 0;

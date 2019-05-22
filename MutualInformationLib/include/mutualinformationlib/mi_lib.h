@@ -124,7 +124,7 @@ namespace mi {
     }
 
 
-    std::vector<bool> JMIM(std::vector<VectorXi> const &features, VectorXi const &y, int k) {
+    std::pair<std::vector<bool>, std::vector<int>> JMIM(std::vector<VectorXi> const &features, VectorXi const &y, int k) {
         //find first feature
         int num_features = features.size();
         std::vector<bool> C(num_features);
@@ -199,7 +199,7 @@ namespace mi {
             C[argmax_i] = true;
         }
 
-        return C;
+        return std::make_pair(C, C_adds);
     }
 }
 

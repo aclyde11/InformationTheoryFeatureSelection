@@ -53,6 +53,14 @@ if (APPLE)
     endif (OPENMP_FOUND)
 endif ()
 
+if(LINUX)
+    find_package(OpenMP REQUIRED) # Find the package
+    if (OPENMP_FOUND)
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    endif()
+endif()
 
 
 add_executable(${PROJECT_NAME} main.cpp)
@@ -60,6 +68,7 @@ if(LINUX)
     find_package(OpenMP REQUIRED) # Find the package
     target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
 endif()
+
 
 target_link_libraries(${PROJECT_NAME}
         sub::milib
