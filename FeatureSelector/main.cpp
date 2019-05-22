@@ -23,7 +23,7 @@ VectorXi randombits(std::mt19937 &generator, int size, double p=0.5) {
 
 VectorXi random_classes(std::mt19937 &generator,  int size, int classes=10) {
     VectorXi vec(size);
-    std::uniform_int_distribution distribution(0, classes);
+    std::uniform_int_distribution<int> distribution(0, classes);
     for (int i = 0; i < size; i++) {
         vec(i) = (int) (distribution(generator));
     }
