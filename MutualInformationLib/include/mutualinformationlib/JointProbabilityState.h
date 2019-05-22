@@ -6,6 +6,7 @@
 #define INFORMATIONTHEORYFEATURESELECTION_JOINTPROBABILITYSTATE_H
 
 #include <vector>
+#include "Feature.h"
 #include <Eigen/Dense>
 
 using Eigen::MatrixXd;
@@ -14,9 +15,6 @@ using Eigen::VectorXd;
 
 
 namespace mi {
-    class ProbabilityState {
-        VectorXd prob;
-    };
 
     class JointProbabilityState {
     public:
@@ -30,14 +28,6 @@ namespace mi {
             auto secondStates = getStateCount(second);
             assert (first.size() == second.size());
 
-            VectorXd firstStateCounts(firstStates);
-            VectorXd secondStateCounts(secondStates);
-            MatrixXd jointStateCounts(firstStates, secondStates);
-
-            firstStateCounts.setZero();
-            secondStateCounts.setZero();
-            jointStateCounts.setZero();
-
             jointProbabilityVector.resize(firstStates, secondStates);
             firstProbabilityVector.resize(firstStates);
             secondProbabilityVector.resize(secondStates);
@@ -46,41 +36,49 @@ namespace mi {
             secondProbabilityVector.setZero();
             jointProbabilityVector.setZero();
 
+            // Count up states occuring in each vector
+            for (int i = 0; i < vecLen; i++) {
+                firstProbabilityVector(first(i)) += 1;
+                secondProbabilityVector(second(i)) += 1;
+                jointProbabilityVector(first(i), second[i]) += 1;
+            }
+
+            firstProbabilityVector = firstProbabilityVector / vecLen;
+            secondProbabilityVector = secondProbabilityVector / vecLen;
+            jointProbabilityVector = jointProbabilityVector / vecLen;
+
+        }
+
+        JointProbabilityState(Feature::Feature const &first, Feature::Feature const &second) {
+            auto vecLen = (double) first.size();
+            auto firstStates = first.probs.numStates();
+            auto secondStates = second.probs.numStates();
+            firstProbabilityVector = first.probs.prob;
+            secondProbabilityVector = second.probs.prob;
+
+            jointProbabilityVector.resize(firstStates, secondStates);
+            jointProbabilityVector.setZero();
 
             // Count up states occuring in each vector
             for (int i = 0; i < vecLen; i++) {
-                firstStateCounts(first(i)) += 1;
-                secondStateCounts(second(i)) += 1;
-                jointStateCounts(first(i), second[i]) += 1;
+                jointProbabilityVector(first.probs.prob(i), second.probs.prob[i]) += 1;
             }
 
-            for (int i = 0; i < firstStates; i++) {
-                firstProbabilityVector(i) = firstStateCounts(i) / vecLen;
-            }
+            jointProbabilityVector = jointProbabilityVector / vecLen;
 
-            for (int i = 0; i < secondStates; i++) {
-                secondProbabilityVector(i) = secondStateCounts(i) / vecLen;
-            }
-
-            for (int i = 0; i < firstStates; i++) {
-                for (int j = 0; j < secondStates; j++) {
-                    jointProbabilityVector(i, j) = jointStateCounts(i, j) / vecLen;
-                }
-            }
         }
 
-        int numFirstStates() {
+        int numFirstStates() const {
             return firstProbabilityVector.size();
         }
 
-        int numSecondStates() {
+        int numSecondStates() const {
             return secondProbabilityVector.size();
         }
 
     private:
-        int getStateCount(VectorXi const &vec) {
+        int getStateCount(VectorXi const &vec) const {
             int states = vec.maxCoeff() + 1;
-            assert(states == 2);
             return states;
         }
     };
