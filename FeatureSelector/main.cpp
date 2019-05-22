@@ -28,10 +28,10 @@ VectorXi random_classes(std::mt19937 &generator,  int size, int classes=37) {
     return vec;
 }
 
-int main() {
+int main(int argc, char **argv) {
     std::random_device rd;
     std::mt19937 generator(rd());
-    int n = 40;
+    int n = std::stoi(argv[1]);
     int m = 11000;
 
     std::vector<VectorXi> features(n);
@@ -42,16 +42,22 @@ int main() {
     std::vector<double> v(n * n);
     auto t1 = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++)
-            v[i] = mi::compute_joint_mutual_information(features[i], features[j], c);
-    }
+    mi::JMIM(features, c, std::stoi(argv[2]));
+
+
+//#pragma omp parallel for simd reduction(max: x)
+//    for (int i = 0; i < n; i++) {
+//        for (int j = 0; j < n; j++) {
+//            tmp = mi::compute_joint_mutual_information(features[i], features[j], c);
+//            if (tmp > x)
+//                x = tmp;
+//        }
+//    }
 
 
     auto t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration d = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << "It took me " << d.count() << " seconds.";
+    std::cout << d.count() << std::endl;
 
     return 0;
 }

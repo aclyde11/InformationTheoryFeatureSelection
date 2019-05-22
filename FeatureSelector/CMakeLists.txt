@@ -1,5 +1,13 @@
 project(feature_selector)
 
+
+
+IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+ENDIF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+
+
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
 
