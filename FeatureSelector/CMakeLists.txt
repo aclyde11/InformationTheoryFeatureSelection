@@ -53,14 +53,14 @@ if (APPLE)
     endif (OPENMP_FOUND)
 endif ()
 
-if(LINUX)
-
-    find_package(OpenMP REQUIRED) # Find the package
-    target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
-        endif()
 
 
 add_executable(${PROJECT_NAME} main.cpp)
+if(LINUX)
+    find_package(OpenMP REQUIRED) # Find the package
+    target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
+endif()
+
 target_link_libraries(${PROJECT_NAME}
         sub::milib
         Eigen3::Eigen
