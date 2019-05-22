@@ -6,6 +6,8 @@
 #include <random>
 #include "mutualinformationlib/Feature.h"
 #include <chrono>
+#include <vector>
+#include <fstream>
 using Eigen::VectorXi;
 
 
@@ -19,7 +21,7 @@ VectorXi randombits(std::mt19937 &generator, int size, double p=0.5) {
     return vec;
 }
 
-VectorXi random_classes(std::mt19937 &generator,  int size, int classes=37) {
+VectorXi random_classes(std::mt19937 &generator,  int size, int classes=10) {
     VectorXi vec(size);
     std::uniform_int_distribution distribution(0, classes);
     for (int i = 0; i < size; i++) {
@@ -28,21 +30,54 @@ VectorXi random_classes(std::mt19937 &generator,  int size, int classes=37) {
     return vec;
 }
 
+// read CSV of ints.
+
+
+
+std::vector<VectorXi> load_csv (const std::string & path) {
+    std::ifstream indata;
+    indata.open(path);
+    std::string line;
+
+
+    VectorXi y;
+    std::vector<int> values;
+    uint rows = 0;
+    uint cols = 0;
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        while (std::getline(lineStream, cell, ',')) {
+            values.push_back(std::stoi(cell));
+            cols++;
+        }
+        ++rows;
+    }
+    cols = cols / rows;
+    std::vector<VectorXi> features(cols);
+    for (int i = 0; i < cols; i++) {
+        features[i].resize(rows);
+    }
+
+        int f;
+    for (int i = 0; i < values.size(); i++) {
+        f = i % cols;
+        features[f](i / cols) =  values[i];
+    }
+    return features;
+}
+
 int main(int argc, char **argv) {
     std::random_device rd;
     std::mt19937 generator(rd());
-    int n = std::stoi(argv[1]);
-    int m = 11000;
 
-    std::vector<VectorXi> features(n);
-    for (int i = 0; i < n; i++)
-        features[i] = randombits(generator, m);
-    VectorXi c = random_classes(generator, m);
+    std::vector<VectorXi> features = load_csv(argv[1]);
+    VectorXi y = features[std::stoi(argv[2])];
+    features.erase(features.begin() + std::stoi(argv[2]));
 
-    std::vector<double> v(n * n);
-    auto t1 = std::chrono::high_resolution_clock::now();
 
-    mi::JMIM(features, c, std::stoi(argv[2]));
+
+    auto feature_mask = mi::JMIM(features, y, std::stoi(argv[3]));
 
 
 //#pragma omp parallel for simd reduction(max: x)
@@ -54,10 +89,16 @@ int main(int argc, char **argv) {
 //        }
 //    }
 
+    std::vector<int> set_indicies;
+    for (int i = 0; i < feature_mask.size(); i++) {
+        if (feature_mask[i]) {
+            set_indicies.push_back(i);
+            std::cout << i << std::endl;
+        }
+    }
 
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration d = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << d.count() << std::endl;
+    std::cout << set_indicies.size() << std::endl;
+
 
     return 0;
 }
