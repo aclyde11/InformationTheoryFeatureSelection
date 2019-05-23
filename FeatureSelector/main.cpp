@@ -42,16 +42,26 @@ std::pair<std::vector<VectorXi>, std::vector<std::string>> load_csv_int(const st
     std::vector<std::string> header;
     uint rows = 0;
     uint cols = 0;
+    if (headers) {
+        while (rows == 0 && std::getline(indata, line)) {
+            std::stringstream lineStream(line);
+            std::string cell;
+            while (std::getline(lineStream, cell, ',')) {
+                header.push_back(cell);
+            }
+            ++rows;
+        }
+    }
+
+    rows = 0;
+    cols = 0;
+
     while (std::getline(indata, line)) {
         std::stringstream lineStream(line);
         std::string cell;
         while (std::getline(lineStream, cell, ',')) {
-            if (headers && rows == 0) {
-                header.push_back(cell);
-            } else {
-                values.push_back(std::stoi(cell));
-                cols++;
-            }
+            values.push_back(std::stoi(cell));
+            cols++;
         }
         ++rows;
     }
@@ -81,15 +91,25 @@ load_csv_double(const std::string &path, bool headers = false) {
     std::vector<std::string> header;
     uint rows = 0;
     uint cols = 0;
+    if (headers) {
+        while (rows == 0 && std::getline(indata, line)) {
+            std::stringstream lineStream(line);
+            std::string cell;
+            while (std::getline(lineStream, cell, ',')) {
+                header.push_back(cell);
+            }
+            ++rows;
+        }
+    }
+
+    rows = 0;
+    cols = 0;
+
     while (std::getline(indata, line)) {
         std::stringstream lineStream(line);
         std::string cell;
         while (std::getline(lineStream, cell, ',')) {
-            if (headers && rows == 0) {
-                header.push_back(cell);
-            } else {
-                values.push_back(std::stod(cell));
-            }
+            values.push_back(std::stod(cell));
             cols++;
         }
         ++rows;
@@ -270,31 +290,33 @@ int main(int argc, char **argv) {
 
 
         if (config.isVerbose()) {
-            std::cout << "Reading file: " <<std::endl;
+            std::cout << "Reading file: " << std::endl;
         }
         std::tie(X, config.header_names) = load_csv_double(config.getInFile(), config.isHeaders());
         if (config.isVerbose()) {
-            std::cout << "done." <<std::endl;
+            std::cout << "done." << std::endl;
         }
 
-        std::vector<double> y_ = X[std::stoi(argv[2])];
-        X.erase(X.begin() + std::stoi(argv[2]));
+        std::vector<double> y_ = X[config.getYLoc()];
+        X.erase(X.begin() + config.getYLoc());
         std::vector<int> y(y_.begin(), y_.end());
-        std::vector<VectorXi> X_disc;
+        std::vector<VectorXi> X_disc(X.size());
+        for (auto &i : X_disc)
+            i.resize(y.size());
+
         Eigen::Map<Eigen::VectorXi> y_eigen(&y[0], y.size());
 
 
         if (config.isVerbose()) {
-            std::cout << "Starting disc: " <<std::endl;
+            std::cout << "Starting disc: " << std::endl;
         }
-#pragma omp parallel for
         for (int i = 0; i < X.size(); i++) {
             auto cut_points = mi::MDLPDiscretize(X[i], y);
             X_disc[i] = mi::bin(X[i], cut_points);
         }
 
         if (config.isVerbose()) {
-            std::cout << "Ending disc: " <<std::endl;
+            std::cout << "Ending disc: " << std::endl;
         }
 
         // disciretize
@@ -302,12 +324,12 @@ int main(int argc, char **argv) {
         // do jmim
 
         if (config.isVerbose()) {
-            std::cout << "Starting JMIM: " <<std::endl;
+            std::cout << "Starting JMIM: " << std::endl;
         }
         auto p = mi::JMIM(X_disc, y_eigen, config.getK());
 
         if (config.isVerbose()) {
-            std::cout << "Ending JMIM: " <<std::endl;
+            std::cout << "Ending JMIM: " << std::endl;
         }
         // output features to list
         std::vector<bool> feature_mask = p.first;

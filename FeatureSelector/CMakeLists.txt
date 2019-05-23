@@ -1,10 +1,12 @@
 project(feature_selector)
 
 
-IF (CMAKE_BUILD_TYPE MATCHES RELEASE)
-    message("Running RELEASE")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-ENDIF()
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
@@ -48,7 +50,7 @@ if (APPLE)
         link_directories("${OPENMP_LIBRARIES}")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        # set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+        set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
     endif (OPENMP_FOUND)
 endif ()
 
