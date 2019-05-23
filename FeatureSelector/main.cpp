@@ -1,13 +1,14 @@
 #include <iostream>
 
-#include "mutualinformationlib/mi_lib.h"
 #include <Eigen/Dense>
 #include <ctime>
 #include <random>
-#include "mutualinformationlib/Feature.h"
 #include <chrono>
 #include <vector>
 #include <fstream>
+
+#include "mutualinformationlib/mi_lib.h"
+
 using Eigen::VectorXi;
 
 
@@ -67,17 +68,61 @@ std::vector<VectorXi> load_csv (const std::string & path) {
     return features;
 }
 
+std::vector<VectorXd> load_csv_double (const std::string & path) {
+    std::ifstream indata;
+    indata.open(path);
+    std::string line;
+
+
+    VectorXi y;
+    std::vector<double> values;
+    uint rows = 0;
+    uint cols = 0;
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        while (std::getline(lineStream, cell, ',')) {
+            values.push_back(std::stod(cell));
+            cols++;
+        }
+        ++rows;
+    }
+    cols = cols / rows;
+    std::vector<VectorXd> features(cols);
+    for (int i = 0; i < cols; i++) {
+        features[i].resize(rows);
+    }
+
+    int f;
+    for (int i = 0; i < values.size(); i++) {
+        f = i % cols;
+        features[f](i / cols) =  values[i];
+    }
+    return features;
+}
+
 int main(int argc, char **argv) {
     std::random_device rd;
     std::mt19937 generator(rd());
 
-    std::vector<VectorXi> features = load_csv(argv[1]);
-    VectorXi y = features[std::stoi(argv[2])];
+    std::vector<VectorXd> features = load_csv_double(argv[1]);
+    VectorXi y = features[std::stoi(argv[2])].cast<int>();
     features.erase(features.begin() + std::stoi(argv[2]));
 
+    std::cout << "doign disc" << std::endl;
+    std::vector<VectorXi> disc_features(features.size());
+    std::vector<int> vec_y(y.data(), y.data() + y.rows() * y.cols());
 
+#pragma omp parallel for
+    for (int i = 0; i < features.size(); i++) {
+        VectorXd tmp = features[i];
+        std::vector<double> vec(tmp.data(), tmp.data() + tmp.rows() * tmp.cols());
+        auto cut_points = mi::MDLPDiscretize(vec, vec_y);
+        disc_features[i] = mi::bin(tmp, cut_points);
+    }
+    std::cout << "done" << std::endl;
 
-    auto p = mi::JMIM(features, y, std::stoi(argv[3]));
+    auto p = mi::JMIM(disc_features, y, std::stoi(argv[3]));
     std::vector<bool> feature_mask = p.first;
     std::vector<int> ordering = p.second;
 

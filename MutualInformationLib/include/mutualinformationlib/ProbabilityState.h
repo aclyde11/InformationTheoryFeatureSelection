@@ -34,6 +34,26 @@ namespace mi {
             prob = prob / vecLen;
         }
 
+        ProbabilityState(std::vector<int> const& vec, int start, int end)  {
+            auto vecLen = (double) end - start;
+
+            int max = 0;
+            for (int i = start; i < end; i++) {
+                if (vec[i] > max) {
+                    max = vec[i];
+                };
+            }
+            auto states =  max + 1;
+            prob.resize(states);
+            prob.setZero();
+
+            for (int i = start; i < end; i++) {
+                prob(vec[i]) += 1;
+            }
+
+            prob = prob / vecLen;
+        }
+
         int numStates() const {
             return prob.size();
         }
