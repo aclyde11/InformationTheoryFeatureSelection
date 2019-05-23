@@ -6,51 +6,52 @@
 #include <chrono>
 #include <vector>
 #include <fstream>
-
+#include <cxxopts.hpp>
 #include "mutualinformationlib/mi_lib.h"
 
 using Eigen::VectorXi;
 
 
+cxxopts::Options parser_args() {
+    cxxopts::Options options("feature_selector", "Performs MDLP Discretization and JMIM feature selection (");
+    options
+            .positional_help("[optional args]")
+            .show_positional_help();
 
-VectorXi randombits(std::mt19937 &generator, int size, double p=0.5) {
-    VectorXi vec(size);
-    std::bernoulli_distribution distribution(p);
-    for (int i = 0; i < size; i++) {
-        vec(i) = (int) (distribution(generator));
-    }
-    return vec;
-}
-
-VectorXi random_classes(std::mt19937 &generator,  int size, int classes=10) {
-    VectorXi vec(size);
-    std::uniform_int_distribution<int> distribution(0, classes);
-    for (int i = 0; i < size; i++) {
-        vec(i) = (int) (distribution(generator));
-    }
-    return vec;
+    options.add_options()
+            ("v,verbose", "Enable verbose output")
+            ("f,file", "File name", cxxopts::value<std::string>())
+            ("y,y_loc", "Y column location in f", cxxopts::value<int>())
+            ("d,discretize", "Discretize input (must be discrete if not enabled)")
+            ("k,k_features", "Number of features select", cxxopts::value<int>())
+            ("o,out", "directory for output files", cxxopts::value<std::string>())
+            ("h,headers", "Table contains headers")
+            ("help", "Print help");
+    cxxopts::value<std::string>()->default_value("value");
+    return options;
 }
 
 // read CSV of ints.
-
-
-
-std::vector<VectorXi> load_csv (const std::string & path) {
+std::pair<std::vector<VectorXi>, std::vector<std::string>> load_csv_int(const std::string &path, bool headers = false) {
     std::ifstream indata;
     indata.open(path);
     std::string line;
 
-
     VectorXi y;
     std::vector<int> values;
+    std::vector<std::string> header;
     uint rows = 0;
     uint cols = 0;
     while (std::getline(indata, line)) {
         std::stringstream lineStream(line);
         std::string cell;
         while (std::getline(lineStream, cell, ',')) {
-            values.push_back(std::stoi(cell));
-            cols++;
+            if (headers && rows == 0) {
+                header.push_back(cell);
+            } else {
+                values.push_back(std::stoi(cell));
+                cols++;
+            }
         }
         ++rows;
     }
@@ -60,15 +61,16 @@ std::vector<VectorXi> load_csv (const std::string & path) {
         features[i].resize(rows);
     }
 
-        int f;
+    int f;
     for (int i = 0; i < values.size(); i++) {
         f = i % cols;
-        features[f](i / cols) =  values[i];
+        features[f](i / cols) = values[i];
     }
-    return features;
+    return std::make_pair(features, header);
 }
 
-std::vector<VectorXd> load_csv_double (const std::string & path) {
+std::pair<std::vector<std::vector<double>>, std::vector<std::string>>
+load_csv_double(const std::string &path, bool headers = false) {
     std::ifstream indata;
     indata.open(path);
     std::string line;
@@ -76,19 +78,24 @@ std::vector<VectorXd> load_csv_double (const std::string & path) {
 
     VectorXi y;
     std::vector<double> values;
+    std::vector<std::string> header;
     uint rows = 0;
     uint cols = 0;
     while (std::getline(indata, line)) {
         std::stringstream lineStream(line);
         std::string cell;
         while (std::getline(lineStream, cell, ',')) {
-            values.push_back(std::stod(cell));
+            if (headers && rows == 0) {
+                header.push_back(cell);
+            } else {
+                values.push_back(std::stod(cell));
+            }
             cols++;
         }
         ++rows;
     }
     cols = cols / rows;
-    std::vector<VectorXd> features(cols);
+    std::vector<std::vector<double>> features(cols);
     for (int i = 0; i < cols; i++) {
         features[i].resize(rows);
     }
@@ -96,49 +103,222 @@ std::vector<VectorXd> load_csv_double (const std::string & path) {
     int f;
     for (int i = 0; i < values.size(); i++) {
         f = i % cols;
-        features[f](i / cols) =  values[i];
+        features[f][i / cols] = values[i];
     }
-    return features;
+    return std::make_pair(features, header);
 }
 
+struct Config {
+
+    Config() {
+
+    }
+
+    Config(const std::string &outfiles, const std::string &inFile, int yLoc, bool verbose, bool headers, int k)
+            : outfiles(outfiles), in_file(inFile), y_loc(yLoc), verbose(verbose), headers(headers), k(k) {}
+
+    const std::string &getOutfiles() const {
+        return outfiles;
+    }
+
+    const std::string &getInFile() const {
+        return in_file;
+    }
+
+    int getYLoc() const {
+        return y_loc;
+    }
+
+    bool isVerbose() const {
+        return verbose;
+    }
+
+    bool isDiscretize() const {
+        return discretize;
+    }
+
+    bool isHeaders() const {
+        return headers;
+    }
+
+    int getK() const {
+        return k;
+    }
+
+    void setOutfiles(const std::string &outfiles) {
+        Config::outfiles = outfiles;
+    }
+
+    void setInFile(const std::string &inFile) {
+        in_file = inFile;
+    }
+
+    void setYLoc(int yLoc) {
+        y_loc = yLoc;
+    }
+
+    void setVerbose(bool verbose) {
+        Config::verbose = verbose;
+    }
+
+    void setHeaders(bool headers) {
+        Config::headers = headers;
+    }
+
+    void setK(int k) {
+        Config::k = k;
+    }
+
+    void setDiscX(const std::vector<VectorXi> &discX) {
+        disc_X = discX;
+    }
+
+    void setInput(const std::vector<std::vector<double>> &input) {
+        Config::input = input;
+    }
+
+    void setYVec(const std::vector<int> &yVec) {
+        y_vec = yVec;
+    }
+
+    void setY(const VectorXi &y) {
+        Config::y = y;
+    }
+
+    void setDiscretize(bool x) {
+        discretize = x;
+    }
+
+public:
+    std::vector<std::string> header_names;
+private:
+    //config options
+    std::string outfiles;
+    std::string in_file;
+    int y_loc;
+    bool verbose;
+    bool headers;
+    bool discretize;
+    int k;
+
+    //frames:
+    std::vector<VectorXi> disc_X;
+    std::vector<std::vector<double>> input;
+    std::vector<int> y_vec;
+    VectorXi y;
+};
+
+
+std::vector<VectorXi> run_discretizer(std::vector<std::vector<double>> X, std::vector<int> y) {
+
+
+}
+
+template<typename T>
+Config parseConfig(T result) {
+    Config config{};
+
+    if (result.count("file")) {
+        config.setInFile(result["file"].template as<std::string>());
+    } else {
+        std::cout << "ERROR: Must provide input file" << std::endl;
+        exit(1);
+    }
+
+    if (result.count("k")) {
+        config.setK(result["k"].template as<int>());
+    } else {
+        std::cout << "ERROR: Must provide number of features to output." << std::endl;
+        exit(1);
+    }
+
+    if (result.count("out")) {
+        config.setOutfiles(result["out"].template as<std::string>());
+    } else {
+        config.setOutfiles("out/");
+    }
+
+    if (result.count("y_loc")) {
+        config.setYLoc(result["y_loc"].template as<int>());
+    } else {
+        std::cout << "ERROR: Must provide location of y column" << std::endl;
+        exit(1);
+    }
+
+
+    config.setDiscretize(result["discretize"].template as<bool>());
+    config.setVerbose(result["verbose"].template as<bool>());
+    config.setHeaders(result["headers"].template as<bool>());
+    return config;
+}
+
+
 int main(int argc, char **argv) {
-    std::random_device rd;
-    std::mt19937 generator(rd());
+    auto options = parser_args();
+    auto result = options.parse(argc, argv);
 
-    std::vector<VectorXd> features = load_csv_double(argv[1]);
-    VectorXi y = features[std::stoi(argv[2])].cast<int>();
-    features.erase(features.begin() + std::stoi(argv[2]));
+    if (result.count("help")) {
+        std::cout << options.help() << std::endl;
+        exit(0);
+    }
 
-    std::cout << "doign disc" << std::endl;
-    std::vector<VectorXi> disc_features(features.size());
-    std::vector<int> vec_y(y.data(), y.data() + y.rows() * y.cols());
+    auto config = parseConfig(result);
 
+    if (config.isDiscretize()) {
+        // read double csv
+        std::vector<std::vector<double>> X;
+
+
+        if (config.isVerbose()) {
+            std::cout << "Reading file: " <<std::endl;
+        }
+        std::tie(X, config.header_names) = load_csv_double(config.getInFile(), config.isHeaders());
+        if (config.isVerbose()) {
+            std::cout << "done." <<std::endl;
+        }
+
+        std::vector<double> y_ = X[std::stoi(argv[2])];
+        X.erase(X.begin() + std::stoi(argv[2]));
+        std::vector<int> y(y_.begin(), y_.end());
+        std::vector<VectorXi> X_disc;
+        Eigen::Map<Eigen::VectorXi> y_eigen(&y[0], y.size());
+
+
+        if (config.isVerbose()) {
+            std::cout << "Starting disc: " <<std::endl;
+        }
 #pragma omp parallel for
-    for (int i = 0; i < features.size(); i++) {
-        VectorXd tmp = features[i];
-        std::vector<double> vec(tmp.data(), tmp.data() + tmp.rows() * tmp.cols());
-        auto cut_points = mi::MDLPDiscretize(vec, vec_y);
-        disc_features[i] = mi::bin(tmp, cut_points);
+        for (int i = 0; i < X.size(); i++) {
+            auto cut_points = mi::MDLPDiscretize(X[i], y);
+            X_disc[i] = mi::bin(X[i], cut_points);
+        }
+
+        if (config.isVerbose()) {
+            std::cout << "Ending disc: " <<std::endl;
+        }
+
+        // disciretize
+        // output dis file
+        // do jmim
+
+        if (config.isVerbose()) {
+            std::cout << "Starting JMIM: " <<std::endl;
+        }
+        auto p = mi::JMIM(X_disc, y_eigen, config.getK());
+
+        if (config.isVerbose()) {
+            std::cout << "Ending JMIM: " <<std::endl;
+        }
+        // output features to list
+        std::vector<bool> feature_mask = p.first;
+        std::vector<int> ordering = p.second;
+
+        for (int i : ordering) {
+            std::cout << i << std::endl;
+        }
+    } else {
+        std::cout << "Only doing disc for now." << std::endl;
     }
-    std::cout << "done" << std::endl;
-
-    auto p = mi::JMIM(disc_features, y, std::stoi(argv[3]));
-    std::vector<bool> feature_mask = p.first;
-    std::vector<int> ordering = p.second;
-
-//#pragma omp parallel for simd reduction(max: x)
-//    for (int i = 0; i < n; i++) {
-//        for (int j = 0; j < n; j++) {
-//            tmp = mi::compute_joint_mutual_information(features[i], features[j], c);
-//            if (tmp > x)
-//                x = tmp;
-//        }
-//    }
-
-    for (int i = 0; i < ordering.size(); i++) {
-        std::cout << i << ": " << ordering[i] << std::endl;
-    }
-
 
     return 0;
 }

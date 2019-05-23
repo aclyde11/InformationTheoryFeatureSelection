@@ -188,13 +188,13 @@ namespace mi {
         return output;
     }
 
-    VectorXi bin(VectorXd const &col, std::vector<double> const &cut_points) {
+    VectorXi bin(std::vector<double> const &col, std::vector<double> const &cut_points) {
         VectorXi output(col.size());
         int bins = cut_points.size();
         int tmp;
         for (int i = 0; i < col.size(); i++) {
             for (tmp = 0; tmp < bins; tmp++) {
-                if (col(i) <= cut_points[tmp])
+                if (col[i] <= cut_points[tmp])
                     break;
             }
             output[i] = tmp;

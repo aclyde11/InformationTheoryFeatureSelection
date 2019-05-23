@@ -1,11 +1,10 @@
 project(feature_selector)
 
 
-IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
+IF (CMAKE_BUILD_TYPE MATCHES RELEASE)
+    message("Running RELEASE")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
-ENDIF (CMAKE_BUILD_TYPE MATCHES DEBUG)
-
+ENDIF()
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
@@ -73,5 +72,6 @@ endif()
 target_link_libraries(${PROJECT_NAME}
         sub::milib
         Eigen3::Eigen
+        cxxopts
         )
 
